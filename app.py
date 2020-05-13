@@ -70,9 +70,10 @@ app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 server = app.server
 app.title = 'Covid Trends'
 
+
 app.layout = html.Div(children=[
     html.H1(children='COVID-19 Trends'),
-
+    html.A('Code can be found on Github', href='https://github.com/Moonglum8/covid-dash'),
     html.Div(children='''
         A basic dashboard displaying covid-19 trends by area for daily cases and deaths.
     '''),
