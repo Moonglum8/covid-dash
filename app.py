@@ -67,6 +67,8 @@ def plotly_deaths(area_name):
     return fig
 
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
+server = app.server
+app.title = 'Covid Trends'
 
 app.layout = html.Div(children=[
     html.H1(children='COVID-19 Trends'),
