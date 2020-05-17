@@ -7,30 +7,40 @@ import plotly.graph_objects as go
 import pandas as pd
 import requests
 import io
+import os
 
-datastr_cases = requests.get('https://coronavirus.data.gov.uk/downloads/csv/coronavirus-cases_latest.csv',allow_redirects=True).text
-data_file_cases = io.StringIO(datastr_cases)
-cases = pd.read_csv(data_file_cases, index_col='Specimen date', parse_dates=True)
+from flask_caching import Cache
 
-datastr_deaths = requests.get('https://coronavirus.data.gov.uk/downloads/csv/coronavirus-deaths_latest.csv',allow_redirects=True).text
-data_file_deaths = io.StringIO(datastr_deaths)
-deaths = pd.read_csv(data_file_deaths, index_col='Reporting date', parse_dates=True)
+CACHE_CONFIG = {
+    # 'CACHE_TYPE': 'redis',
+    # 'CACHE_REDIS_URL': os.environ.get('REDIS_URL', 'redis://localhost:6379')
+    'CACHE_TYPE': 'simple',
+    'CACHE_DEFAULT_TIMEOUT': 300,
+    'CACHE_THRESHOLD': 5
+}
+
+def get_cases():
+    datastr_cases = requests.get('https://coronavirus.data.gov.uk/downloads/csv/coronavirus-cases_latest.csv',allow_redirects=True).text
+    data_file_cases = io.StringIO(datastr_cases)
+    return pd.read_csv(data_file_cases, index_col='Specimen date', parse_dates=True)
+
+def get_deaths():
+    datastr_deaths = requests.get('https://coronavirus.data.gov.uk/downloads/csv/coronavirus-deaths_latest.csv',allow_redirects=True).text
+    data_file_deaths = io.StringIO(datastr_deaths)
+    return pd.read_csv(data_file_deaths, index_col='Reporting date', parse_dates=True)
+
+def set_cache():
+    cases = get_cases()
+    deaths = get_deaths()
+    cache.set('cases', cases)
+    cache.set('deaths', deaths)
+    return cases, deaths
 
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
-# print(cases.info())
-# print(deaths.info())
-
-# cases = pd.read_csv('data/coronavirus-cases_latest.csv', index_col='Specimen date', parse_dates=True)
-# deaths = pd.read_csv('data/coronavirus-deaths_latest.csv', index_col='Reporting date', parse_dates=True)
-
-last_date_cases = cases.index.max().strftime("%d %B %Y")
-last_date_deaths = deaths.index.max().strftime("%d %B %Y")
-
-areas_cases = [{'label': area, 'value': area} for area in cases['Area name'].drop_duplicates()]
-areas_deaths = [{'label': area, 'value': area} for area in deaths['Area name'].drop_duplicates()]
-
 def plotly_cases(area_name):
+    cases = cache.get('cases')
+    last_date_cases = cases.index.max().strftime("%d %B %Y")
     total_cases = cases[cases['Area name'] == area_name]['Daily lab-confirmed cases'].resample('d').sum()
     total_cases_rolling = total_cases.rolling(window=7).mean()
     peak_cases = total_cases_rolling.idxmax().strftime("%d %B %Y")
@@ -49,6 +59,8 @@ def plotly_cases(area_name):
     return fig
 
 def plotly_deaths(area_name):
+    deaths = cache.get('deaths')
+    last_date_deaths = deaths.index.max().strftime("%d %B %Y")
     total_deaths = deaths[deaths['Area name'] == area_name]['Daily change in deaths'].resample('d').sum()
     total_deaths_rolling = total_deaths.rolling(window=7).mean()
     peak_deaths = total_deaths_rolling.idxmax().strftime("%d %B %Y")
@@ -67,11 +79,22 @@ def plotly_deaths(area_name):
     return fig
 
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
+
+cache = Cache()
+cache.init_app(app.server, config=CACHE_CONFIG)
+set_cache()
+
 server = app.server
 app.title = 'Covid Trends'
 
 
 app.layout = html.Div(children=[
+    dcc.Interval(
+        id='interval-component',
+        interval=60*1000, # in milliseconds
+        n_intervals=0
+    ),
+    html.Div(id='test', children=['hello world'], style={'display':'none'}),
     html.H1(children='COVID-19 Trends'),
     html.A('Code can be found on Github', href='https://github.com/Moonglum8/covid-dash'),
     html.Div(children='''
@@ -79,7 +102,7 @@ app.layout = html.Div(children=[
     '''),
     dcc.Dropdown(
         id='cases-dropdown',
-        options=areas_cases,
+        options=[],
         value='England'
     ),
     dcc.Graph(
@@ -88,7 +111,7 @@ app.layout = html.Div(children=[
     ),
     dcc.Dropdown(
         id='deaths-dropdown',
-        options=areas_deaths,
+        options=[],
         value='England'
     ),
     dcc.Graph(
@@ -96,6 +119,18 @@ app.layout = html.Div(children=[
         id='deaths-plot'
     )
 ])
+
+@app.callback([Output('cases-dropdown', 'options'),
+                Output('deaths-dropdown', 'options'),
+                Output('test', 'children')],
+              [Input('interval-component', 'n_intervals')])
+def update_data(n):
+    # cases = get_cases()
+    # deaths = get_deaths()
+    # cache.set('cases', cases)
+    # cache.set('deaths', deaths)
+    cases, deaths = set_cache()
+    return [{'label': area, 'value': area} for area in cases['Area name'].drop_duplicates()], [{'label': area, 'value': area} for area in deaths['Area name'].drop_duplicates()], n
 
 @app.callback(
     Output('cases-plot', 'figure'),
