@@ -125,10 +125,6 @@ app.layout = html.Div(children=[
                 Output('test', 'children')],
               [Input('interval-component', 'n_intervals')])
 def update_data(n):
-    # cases = get_cases()
-    # deaths = get_deaths()
-    # cache.set('cases', cases)
-    # cache.set('deaths', deaths)
     cases, deaths = set_cache()
     return [{'label': area, 'value': area} for area in cases['Area name'].drop_duplicates()], [{'label': area, 'value': area} for area in deaths['Area name'].drop_duplicates()], n
 
