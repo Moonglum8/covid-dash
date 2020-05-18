@@ -100,24 +100,29 @@ app.layout = html.Div(children=[
     html.Div(children='''
         A basic dashboard displaying covid-19 trends by area for daily cases and deaths.
     '''),
-    dcc.Dropdown(
-        id='cases-dropdown',
-        options=[],
-        value='England'
-    ),
-    dcc.Graph(
-        style={'height': 300},
-        id='cases-plot'
-    ),
-    dcc.Dropdown(
-        id='deaths-dropdown',
-        options=[],
-        value='England'
-    ),
-    dcc.Graph(
-        style={'height': 300},
-        id='deaths-plot'
-    )
+    dcc.Loading(id='cases_loading', children=[
+        dcc.Dropdown(
+            id='cases-dropdown',
+            options=[],
+            value='England'
+        ),
+        dcc.Graph(
+            style={'height': 300},
+            id='cases-plot'
+        ),
+    ], type='circle'),
+    dcc.Loading(id='deaths-loading', children=[
+        dcc.Dropdown(
+            id='deaths-dropdown',
+            options=[],
+            value='England'
+        ),
+        dcc.Graph(
+            style={'height': 300},
+            id='deaths-plot'
+        ),
+    ], type='circle')
+
 ])
 
 @app.callback([Output('cases-dropdown', 'options'),
