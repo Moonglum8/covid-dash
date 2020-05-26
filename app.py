@@ -40,10 +40,14 @@ external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
 def plotly_cases(area_name):
     cases = cache.get('cases')
-    last_date_cases = cases.index.max().strftime("%d %B %Y")
+    last_date_cases = cases.index.max()
     total_cases = cases[cases['Area name'] == area_name]['Daily lab-confirmed cases'].resample('d').sum()
     total_cases_rolling = total_cases.rolling(window=7).mean()
-    peak_cases = total_cases_rolling.idxmax().strftime("%d %B %Y")
+    peak_cases = total_cases_rolling.idxmax()
+    peak_cases_from_today = last_date_cases - peak_cases
+    peak = str(peak_cases_from_today.days)
+    last_date_cases = last_date_cases.strftime("%d %B %Y")
+    peak_cases = peak_cases.strftime("%d %B %Y")
 
     fig = go.Figure()
     fig.add_trace(go.Bar(x=total_cases.index, y=total_cases,
@@ -53,17 +57,21 @@ def plotly_cases(area_name):
                         mode='lines',
                         name='7 day average',
                         line=dict(dash='dash', color='black')))
-    fig.update_layout(title_text='Cases @ ' + last_date_cases + ' [Peak: ' + peak_cases + ']: ' + area_name,
+    fig.update_layout(title_text='Number of days since peak (on ' + peak_cases + ' from ' + last_date_cases +'): ' + peak + ' [' + area_name + ']',
                      template='plotly_white')
 
     return fig
 
 def plotly_deaths(area_name):
     deaths = cache.get('deaths')
-    last_date_deaths = deaths.index.max().strftime("%d %B %Y")
+    last_date_deaths = deaths.index.max()
     total_deaths = deaths[deaths['Area name'] == area_name]['Daily change in deaths'].resample('d').sum()
     total_deaths_rolling = total_deaths.rolling(window=7).mean()
-    peak_deaths = total_deaths_rolling.idxmax().strftime("%d %B %Y")
+    peak_deaths = total_deaths_rolling.idxmax()
+    peak_deaths_from_today = last_date_deaths - peak_deaths
+    peak = str(peak_deaths_from_today.days)
+    last_date_deaths = last_date_deaths.strftime("%d %B %Y")
+    peak_deaths = peak_deaths.strftime("%d %B %Y")
 
     fig = go.Figure()
     fig.add_trace(go.Bar(x=total_deaths.index, y=total_deaths,
@@ -73,7 +81,7 @@ def plotly_deaths(area_name):
                         mode='lines',
                         name='7 day average',
                         line=dict(dash='dash', color='black')))
-    fig.update_layout(title_text='Deaths @ ' + last_date_deaths + ' [Peak: ' + peak_deaths + ']: '+area_name,
+    fig.update_layout(title_text='Number of days since peak (on ' + peak_deaths + ' from ' + last_date_deaths +'): ' + peak + ' [' + area_name + ']',
                      template='plotly_white')
 
     return fig
