@@ -5,123 +5,11 @@ from dash.dependencies import Input, Output
 import plotly.graph_objects as go
 
 import pandas as pd
+import requests
 import io
 import os
 
 from flask_caching import Cache
-
-from typing import Iterable, Dict, Union, List
-from json import dumps
-from requests import get
-from http import HTTPStatus
-
-
-StructureType = Dict[str, Union[dict, str]]
-FiltersType = Iterable[str]
-APIResponseType = Union[List[StructureType], str]
-
-
-def get_paginated_dataset(filters: FiltersType, structure: StructureType,
-                          as_csv: bool = False) -> APIResponseType:
-    """
-    Extracts paginated data by requesting all of the pages
-    and combining the results.
-
-    Parameters
-    ----------
-    filters: Iterable[str]
-        API filters. See the API documentations for additional
-        information.
-
-    structure: Dict[str, Union[dict, str]]
-        Structure parameter. See the API documentations for
-        additional information.
-
-    as_csv: bool
-        Return the data as CSV. [default: ``False``]
-
-    Returns
-    -------
-    Union[List[StructureType], str]
-        Comprehensive list of dictionaries containing all the data for
-        the given ``filters`` and ``structure``.
-    """
-    endpoint = "https://api.coronavirus.data.gov.uk/v1/data"
-
-    api_params = {
-        "filters": str.join(";", filters),
-        "structure": dumps(structure, separators=(",", ":")),
-        "format": "json" if not as_csv else "csv"
-    }
-
-    data = list()
-
-    page_number = 1
-
-    while True:
-        # Adding page number to query params
-        api_params["page"] = page_number
-
-        response = get(endpoint, params=api_params, timeout=100)
-        print(response.status_code)
-        if response.status_code >= HTTPStatus.BAD_REQUEST:
-            raise RuntimeError(f'Request failed: {response.text}')
-        elif response.status_code == HTTPStatus.NO_CONTENT:
-            break
-
-        if as_csv:
-            csv_content = response.content.decode()
-
-            # Removing CSV header (column names) where page
-            # number is greater than 1.
-            if page_number > 1:
-                data_lines = csv_content.split("\n")[1:]
-                csv_content = str.join("\n", data_lines)
-
-            data.append(csv_content.strip())
-            page_number += 1
-            continue
-
-        current_data = response.json()
-        page_data: List[StructureType] = current_data['data']
-
-        data.extend(page_data)
-
-        # The "next" attribute in "pagination" will be `None`
-        # when we reach the end.
-        if current_data["pagination"]["next"] is None:
-            break
-
-        page_number += 1
-
-    if not as_csv:
-        return data
-
-    # Concatenating CSV pages
-    return str.join("\n", data)
-
-
-
-query_filters = [
-    f"areaType=region"
-]
-
-query_structure_cases = {
-    "date": "date",
-    "name": "areaName",
-    "code": "areaCode",
-    "daily": "newCasesBySpecimenDate",
-    "cumulative": "cumCasesBySpecimenDate"
-}
-
-query_structure_deaths = {
-    "date": "date",
-    "name": "areaName",
-    "code": "areaCode",
-    "daily": "newDeaths28DaysByDeathDate",
-    "cumulative": "cumDeaths28DaysByDeathDate"
-}
-
 
 CACHE_CONFIG = {
     # 'CACHE_TYPE': 'redis',
@@ -132,16 +20,14 @@ CACHE_CONFIG = {
 }
 
 def get_cases():
-    csv_data = get_paginated_dataset(query_filters, query_structure_cases, as_csv=True)
-    df = pd.read_csv(io.StringIO(csv_data), index_col='date', parse_dates=True)
-    print(df)
-    return df
+    datastr_cases = requests.get('https://coronavirus.data.gov.uk/downloads/csv/coronavirus-cases_latest.csv',allow_redirects=True).text
+    data_file_cases = io.StringIO(datastr_cases)
+    return pd.read_csv(data_file_cases, index_col='Specimen date', parse_dates=True)
 
 def get_deaths():
-    csv_data = get_paginated_dataset(query_filters, query_structure_deaths, as_csv=True)
-    df = pd.read_csv(io.StringIO(csv_data), index_col='date', parse_dates=True)
-    print(df)
-    return df
+    datastr_deaths = requests.get('https://coronavirus.data.gov.uk/downloads/csv/coronavirus-deaths_latest.csv',allow_redirects=True).text
+    data_file_deaths = io.StringIO(datastr_deaths)
+    return pd.read_csv(data_file_deaths, index_col='Reporting date', parse_dates=True)
 
 def set_cache():
     cases = get_cases()
@@ -155,7 +41,7 @@ external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 def plotly_cases(area_name):
     cases = cache.get('cases')
     last_date_cases = cases.index.max()
-    total_cases = cases[cases['name'] == area_name]['daily'].resample('d').sum()
+    total_cases = cases[cases['Area name'] == area_name]['Daily lab-confirmed cases'].resample('d').sum()
     total_cases_rolling = total_cases.rolling(window=7).mean()
     peak_cases = total_cases_rolling.idxmax()
     peak_cases_from_today = last_date_cases - peak_cases
@@ -179,7 +65,7 @@ def plotly_cases(area_name):
 def plotly_deaths(area_name):
     deaths = cache.get('deaths')
     last_date_deaths = deaths.index.max()
-    total_deaths = deaths[deaths['name'] == area_name]['daily'].resample('d').sum()
+    total_deaths = deaths[deaths['Area name'] == area_name]['Daily change in deaths'].resample('d').sum()
     total_deaths_rolling = total_deaths.rolling(window=7).mean()
     peak_deaths = total_deaths_rolling.idxmax()
     peak_deaths_from_today = last_date_deaths - peak_deaths
@@ -226,7 +112,7 @@ app.layout = html.Div(children=[
         dcc.Dropdown(
             id='cases-dropdown',
             options=[],
-            value='London'
+            value='England'
         ),
         dcc.Graph(
             style={'height': 300},
@@ -237,7 +123,7 @@ app.layout = html.Div(children=[
         dcc.Dropdown(
             id='deaths-dropdown',
             options=[],
-            value='London'
+            value='England'
         ),
         dcc.Graph(
             style={'height': 300},
@@ -253,7 +139,7 @@ app.layout = html.Div(children=[
               [Input('interval-component', 'n_intervals')])
 def update_data(n):
     cases, deaths = set_cache()
-    return [{'label': area, 'value': area} for area in cases['name'].drop_duplicates()], [{'label': area, 'value': area} for area in deaths['name'].drop_duplicates()], n
+    return [{'label': area, 'value': area} for area in cases['Area name'].drop_duplicates()], [{'label': area, 'value': area} for area in deaths['Area name'].drop_duplicates()], n
 
 @app.callback(
     Output('cases-plot', 'figure'),
