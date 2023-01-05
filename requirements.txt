@@ -71,4 +71,4 @@ ZConfig==3.5.0
 zipp==3.1.0
 ZODB==5.5.1
 zodbpickle==2.0.0
-zope.interface==4.7.1
+zope.interface==5.5.2
