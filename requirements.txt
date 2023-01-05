@@ -34,7 +34,7 @@ more-itertools==8.2.0
 numpy>=1.21
 ordered-set==3.1.1
 packaging==20.3
-pandas==0.25.3
+pandas==1.5.2
 parso==0.7.0
 persistent==4.6.1
 pickleshare==0.7.5
