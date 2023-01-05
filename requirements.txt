@@ -60,7 +60,7 @@ six==1.14.0
 tqdm==4.43.0
 traitlets==4.3.3
 transaction==3.0.0
-waitress==2.1.1
+waitress==2.1.2
 wcwidth==0.1.9
 Werkzeug==1.0.1
 wincertstore==0.2
