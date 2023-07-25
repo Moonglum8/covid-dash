@@ -2,7 +2,7 @@ atomicwrites==1.4.0
 attrs==19.3.0
 backcall==0.1.0
 BTrees==4.6.1
-certifi==2022.12.7
+certifi==2023.7.22
 cffi==1.15.1
 click==7.1.2
 colorama==0.4.3
