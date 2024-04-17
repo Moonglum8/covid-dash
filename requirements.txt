@@ -9,7 +9,7 @@ colorama==0.4.3
 cycler==0.10.0
 dash==1.9.1
 dash-bootstrap-components==0.9.1
-dash-core-components==1.8.1
+dash-core-components==2.0.0
 dash-html-components==2.0.0
 dash-renderer==1.2.4
 dash-table==4.6.1
