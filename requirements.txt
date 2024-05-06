@@ -62,7 +62,7 @@ traitlets==4.3.3
 transaction==3.0.0
 waitress==2.1.2
 wcwidth==0.1.9
-Werkzeug==2.3.8
+Werkzeug==3.0.3
 wincertstore==0.2
 XlsxWriter==1.2.7
 zc.lockfile==2.0
