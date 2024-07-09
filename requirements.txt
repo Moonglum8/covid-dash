@@ -68,7 +68,7 @@ XlsxWriter==1.2.7
 zc.lockfile==2.0
 zc.zlibstorage==1.2.0
 ZConfig==3.5.0
-zipp==3.1.0
+zipp==3.19.1
 ZODB==5.5.1
 zodbpickle==2.0.0
 zope.interface==5.5.2
